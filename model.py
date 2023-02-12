@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from PIL import Image
 import matplotlib.pyplot as plt
 
 import torchvision.transforms as transforms
@@ -16,15 +15,24 @@ import copy
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # desired size of the output image
-imsize = 512 if torch.cuda.is_available() else 128  # use small size if no gpu
+# imsize = 512 if torch.cuda.is_available() else 128  # use small size if no gpu
 
-loader = transforms.Compose([
-    transforms.Resize(imsize),  # scale imported image
-    transforms.ToTensor()])  # transform it into a torch tensor
+# loader = transforms.Compose([
+ #   transforms.Resize(imsize),  # scale imported image
+#    transforms.ToTensor()])  # transform it into a torch tensor
 
 
-def image_loader(image_name):
-    image = Image.open(image_name)
+def image_loader(image_name, height):
+    if height >= 512:
+        imsize = 512 if torch.cuda.is_available() else 128
+    elif 128 <= height < 512:
+        imsize = height if torch.cuda.is_available() else 128
+    else:
+        imsize = height
+    loader = transforms.Compose([
+        transforms.Resize(imsize),  # scale imported image
+        transforms.ToTensor()])  # transform it into a torch tensor
+    image = image_name
     # fake batch dimension required to fit network's input dimensions
     image = loader(image).unsqueeze(0)
     return image.to(device, torch.float)
@@ -95,6 +103,7 @@ cnn_normalization_std = torch.tensor([0.229, 0.224, 0.225]).to(device)
 
 # create a module to normalize input image so we can easily put it in a
 # nn.Sequential
+
 class Normalization(nn.Module):
     def __init__(self, mean, std):
         super(Normalization, self).__init__()
@@ -111,6 +120,7 @@ class Normalization(nn.Module):
 
 content_layers_default = ['conv_4']
 style_layers_default = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5']
+
 
 def get_style_model_and_losses(cnn, normalization_mean, normalization_std,
                                style_img, content_img,
@@ -182,6 +192,7 @@ def get_input_optimizer(input_img):
     # this line to show that input is a parameter that requires a gradient
     optimizer = optim.LBFGS([input_img])
     return optimizer
+
 
 def run_style_transfer(cnn, normalization_mean, normalization_std,
                        content_img, style_img, input_img, num_steps=300,
