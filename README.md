@@ -19,5 +19,5 @@ Style-Transfer-bot - это итоговый проект по курсу Deep L
 
 ![image](https://user-images.githubusercontent.com/103606051/215318526-e48682d7-1a3e-4e89-8be3-16c448f3d0c4.png)
 
-UPD 12.02.2023:
+UPD:
 Теперь бот может работать с изображениями разного размера
