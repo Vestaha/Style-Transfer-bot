@@ -10,15 +10,14 @@ import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 import torchvision.models as models
 
-import copy
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # desired size of the output image
-# imsize = 512 if torch.cuda.is_available() else 128  # use small size if no gpu
+# imsize = 512 if torch.cuda.is_available() else 128
+# use small size if no gpu
 
 # loader = transforms.Compose([
- #   transforms.Resize(imsize),  # scale imported image
+#    transforms.Resize(imsize),  # scale imported image
 #    transforms.ToTensor()])  # transform it into a torch tensor
 
 
@@ -52,7 +51,7 @@ def imshow(tensor, title=None):
     plt.imshow(image)
     if title is not None:
         plt.title(title)
-    plt.pause(0.001) # pause a bit so that plots are updated
+    plt.pause(0.001)  # pause a bit so that plots are updated
 
 
 class ContentLoss(nn.Module):
@@ -104,6 +103,7 @@ cnn_normalization_std = torch.tensor([0.229, 0.224, 0.225]).to(device)
 # create a module to normalize input image so we can easily put it in a
 # nn.Sequential
 
+
 class Normalization(nn.Module):
     def __init__(self, mean, std):
         super(Normalization, self).__init__()
@@ -127,7 +127,9 @@ def get_style_model_and_losses(cnn, normalization_mean, normalization_std,
                                content_layers=content_layers_default,
                                style_layers=style_layers_default):
     # normalization module
-    normalization = Normalization(normalization_mean, normalization_std).to(device)
+    normalization = Normalization(
+        normalization_mean, normalization_std
+    ).to(device)
 
     # just in order to have an iterable access to or list of content/syle
     # losses
@@ -142,19 +144,21 @@ def get_style_model_and_losses(cnn, normalization_mean, normalization_std,
     for layer in cnn.children():
         if isinstance(layer, nn.Conv2d):
             i += 1
-            name = 'conv_{}'.format(i)
+            name = f'conv_{i}'
         elif isinstance(layer, nn.ReLU):
-            name = 'relu_{}'.format(i)
-            # The in-place version doesn't play very nicely with the ContentLoss
+            name = f'relu_{i}'
+            # The in-place version doesn't play very nicely with the ContentLoss # noqa: E501
             # and StyleLoss we insert below. So we replace with out-of-place
             # ones here.
             layer = nn.ReLU(inplace=False)
         elif isinstance(layer, nn.MaxPool2d):
-            name = 'pool_{}'.format(i)
+            name = f'pool_{i}'
         elif isinstance(layer, nn.BatchNorm2d):
-            name = 'bn_{}'.format(i)
+            name = f'bn_{i}'
         else:
-            raise RuntimeError('Unrecognized layer: {}'.format(layer.__class__.__name__))
+            raise RuntimeError(
+                f'Unrecognized layer: {layer.__class__.__name__}'
+            )
 
         model.add_module(name, layer)
 
@@ -162,19 +166,19 @@ def get_style_model_and_losses(cnn, normalization_mean, normalization_std,
             # add content loss:
             target = model(content_img).detach()
             content_loss = ContentLoss(target)
-            model.add_module("content_loss_{}".format(i), content_loss)
+            model.add_module(f"content_loss_{i}", content_loss)
             content_losses.append(content_loss)
 
         if name in style_layers:
             # add style loss:
             target_feature = model(style_img).detach()
             style_loss = StyleLoss(target_feature)
-            model.add_module("style_loss_{}".format(i), style_loss)
+            model.add_module(f"style_loss_{i}", style_loss)
             style_losses.append(style_loss)
 
     # now we trim off the layers after the last content and style losses
     for i in range(len(model) - 1, -1, -1):
-        if isinstance(model[i], ContentLoss) or isinstance(model[i], StyleLoss):
+        if isinstance(model[i], (ContentLoss, StyleLoss)):
             break
 
     model = model[:(i + 1)]
@@ -189,9 +193,7 @@ def get_style_model_and_losses(cnn, normalization_mean, normalization_std,
 
 
 def get_input_optimizer(input_img):
-    # this line to show that input is a parameter that requires a gradient
-    optimizer = optim.LBFGS([input_img])
-    return optimizer
+    return optim.LBFGS([input_img])
 
 
 def run_style_transfer(cnn, normalization_mean, normalization_std,
@@ -199,8 +201,13 @@ def run_style_transfer(cnn, normalization_mean, normalization_std,
                        style_weight=1000000, content_weight=1):
     """Run the style transfer."""
     print('Building the style transfer model..')
-    model, style_losses, content_losses = get_style_model_and_losses(cnn,
-        normalization_mean, normalization_std, style_img, content_img)
+    model, style_losses, content_losses = get_style_model_and_losses(
+        cnn,
+        normalization_mean,
+        normalization_std,
+        style_img,
+        content_img
+    )
 
     # We want to optimize the input and not the model parameters so we
     # update all the requires_grad fields accordingly
